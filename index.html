@@ -113,7 +113,7 @@
 <div class="wrap">
   <header>
     <h1>BLIND<br>SUDOKU<span class="pow"> 9⁻ᴱ</span></h1>
-    <p class="sub">Don't know how to play sudoku? Great, that's for nerds and you ain't one. PRESS SPACE</p>
+    <p class="sub">Don't know how to play sudoku? Great, that's for nerds and you ain't one. PRESS SPACE or TAP, NERD</p>
   </header>
 
   <div class="controls">
@@ -223,7 +223,7 @@
     renderPuzzle();
     verdictEl.className='verdict';
     state=1;
-    promptEl.innerHTML='Press <span class="key">SPACE</span> to fill '+blanks.length+' blank'+(blanks.length>1?'s':'')+' at random';
+    promptEl.innerHTML='Press <span class="key">SPACE</span> or tap to fill '+blanks.length+' blank'+(blanks.length>1?'s':'')+' at random';
     resEl.textContent='';
   }
 
@@ -241,7 +241,7 @@
     verdictEl.textContent = win ? 'YES' : 'NO';
     verdictEl.className='verdict show '+(win?'yes':'no');
     resEl.innerHTML = '<b>'+correct+'</b> / '+blanks.length+' cells landed correct'+(win?' — you beat 9^'+blanks.length+'.':'.');
-    promptEl.innerHTML='Press <span class="key">SPACE</span> for a new puzzle';
+    promptEl.innerHTML='Press <span class="key">SPACE</span> or tap for a new puzzle';
     state=2;
   }
 
@@ -254,7 +254,7 @@
     state=0; blanks=[]; renderEmpty();
     verdictEl.className='verdict';
     resEl.textContent='';
-    promptEl.innerHTML='Press <span class="key">SPACE</span> to generate a puzzle';
+    promptEl.innerHTML='Press <span class="key">SPACE</span> or tap to generate a puzzle';
   }
 
   // ---- events ----
