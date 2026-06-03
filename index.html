@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9⁻ᴱ — Blind Sudoku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0b0d;
+    --ink:#e8e6e0;
+    --dim:#6f7178;
+    --line:#2a2d33;
+    --line-strong:#52565f;
+    --no:#ff2e2e;
+    --yes:#22e0a1;
+    --accent:#ffd23f;
+    --cell:#101216;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Space Mono",monospace;
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:clamp(16px,4vw,48px);
+    overflow-x:hidden;
+    position:relative;
+  }
+  /* grain */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap{width:100%;max-width:760px;position:relative;z-index:1}
+
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+  h1{font-family:"Anton",sans-serif;font-weight:400;font-size:clamp(28px,7vw,54px);letter-spacing:.5px;line-height:.9}
+  h1 .pow{color:var(--accent)}
+  .sub{color:var(--dim);font-size:12px;max-width:280px;line-height:1.5;text-align:right}
+
+  /* controls */
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px}
+  .ctrl{background:var(--cell);border:1px solid var(--line);padding:14px 16px}
+  .ctrl .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .ctrl label{font-weight:700;font-size:13px;letter-spacing:1px}
+  .ctrl .val{font-family:"Anton",sans-serif;font-size:26px;color:var(--accent)}
+  .ctrl .hint{color:var(--dim);font-size:11px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:var(--line-strong);outline:none;cursor:pointer;margin-top:4px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--accent);border:2px solid var(--bg);cursor:pointer;border-radius:0}
+
+  .readout{display:flex;gap:0;border:1px solid var(--line);margin-bottom:22px;flex-wrap:wrap}
+  .stat{flex:1;min-width:120px;padding:12px 16px;border-right:1px solid var(--line)}
+  .stat:last-child{border-right:none}
+  .stat .k{color:var(--dim);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+  .stat .v{font-size:15px;font-weight:700;word-break:break-all}
+  .stat .v.big{color:var(--accent)}
+
+  .denom{border:1px solid var(--line);border-top:none;margin-top:-22px;margin-bottom:22px;padding:10px 16px;color:var(--dim);font-size:11px;line-height:1.5;word-break:break-all}
+  .denom b{color:var(--ink)}
+
+  /* board */
+  .stage{position:relative;display:flex;justify-content:center;margin-bottom:18px}
+  .board{
+    display:grid;grid-template-columns:repeat(9,1fr);
+    width:min(92vw,468px);aspect-ratio:1;
+    background:var(--line-strong);
+    gap:1px;padding:1px;border:2px solid var(--line-strong);
+  }
+  .sq{
+    background:var(--cell);display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:clamp(13px,3.4vw,22px);user-select:none;position:relative;
+  }
+  /* thick box separators */
+  .sq.r3{margin-top:2px}.sq.c3{margin-left:2px}
+  .sq.given{color:var(--dim)}
+  .sq.blank{background:#16181d}
+  .sq.guess-ok{color:var(--yes);background:rgba(34,224,161,.08)}
+  .sq.guess-bad{color:var(--no);background:rgba(255,46,46,.08)}
+
+  .verdict{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;font-family:"Anton",sans-serif;font-size:clamp(120px,40vw,300px);
+    line-height:1;letter-spacing:-6px;opacity:0;
+  }
+  .verdict.show{animation:slam .5s cubic-bezier(.2,1.4,.3,1) forwards}
+  .verdict.no{color:var(--no);text-shadow:0 0 40px rgba(255,46,46,.5)}
+  .verdict.yes{color:var(--yes);text-shadow:0 0 40px rgba(34,224,161,.5)}
+  @keyframes slam{0%{transform:scale(2.6) rotate(-4deg);opacity:0}60%{opacity:1}100%{transform:scale(1) rotate(-3deg);opacity:1}}
+
+  .prompt{
+    text-align:center;font-size:13px;letter-spacing:1px;color:var(--dim);min-height:22px;
+  }
+  .prompt b{color:var(--accent)}
+  .prompt .key{border:1px solid var(--line-strong);padding:1px 8px;color:var(--ink);font-size:12px}
+
+  .resultline{text-align:center;font-size:12px;color:var(--dim);margin-top:8px;min-height:18px}
+  .resultline b{color:var(--ink)}
+
+  footer{margin-top:34px;color:var(--dim);font-size:11px;text-align:center;line-height:1.7;border-top:1px solid var(--line);padding-top:16px;width:100%;max-width:760px}
+  footer code{color:var(--accent)}
+  a{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BLIND<br>SUDOKU<span class="pow"> 9⁻ᴱ</span></h1>
+    <p class="sub">Don't know how to play sudoku? Great, that's for nerds and you ain't one. PRESS SPACE</p>
+  </header>
+
+  <div class="controls">
+    <div class="ctrl">
+      <div class="top"><label>n — BOXES BLANKED</label><span class="val" id="nval">3</span></div>
+      <input type="range" id="n" min="1" max="9" value="3" step="1">
+      <div class="hint">how many of the 9 boxes get holes</div>
+    </div>
+    <div class="ctrl">
+      <div class="top"><label>x — BLANKS / BOX</label><span class="val" id="xval">1</span></div>
+      <input type="range" id="x" min="1" max="9" value="1" step="1">
+      <div class="hint">empty cells inside each chosen box</div>
+    </div>
+  </div>
+
+  <div class="readout">
+    <div class="stat"><div class="k">E = n·x</div><div class="v big" id="E">3</div></div>
+    <div class="stat"><div class="k">P(all correct) = 9⁻ᴱ</div><div class="v" id="P">≈ 1.37e-3</div></div>
+    <div class="stat"><div class="k">E[cells correct] = E/9</div><div class="v" id="EC">0.33</div></div>
+  </div>
+  <div class="denom">odds: <b>1 in <span id="denom">729</span></b></div>
+
+  <div class="stage">
+    <div class="board" id="board"></div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+  <div class="prompt" id="prompt">Press <span class="key">SPACE</span> to generate a puzzle</div>
+  <div class="resultline" id="resultline"></div>
+
+  <footer>
+    Each blank is an independent uniform draw from 1–9, scored against the unique solution.
+    “Solved’’ means every guess matches exactly → probability <code>9⁻ᴱ</code>.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const $ = s => document.getElementById(s);
+  const boardEl = $('board'), verdictEl = $('verdict'), promptEl = $('prompt'), resEl = $('resultline');
+  const nEl = $('n'), xEl = $('x');
+
+  let solution = [];      // 9x9 numbers
+  let blanks = [];        // [{r,c}]
+  let state = 0;          // 0 ready, 1 puzzle shown, 2 filled/result
+
+  // ---- valid solved grid via base-pattern shuffle ----
+  function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+  function makeSolution(){
+    const b=3, side=9, rb=[0,1,2];
+    const rows=[].concat(...shuffle([...rb]).map(g=>shuffle([...rb]).map(r=>g*b+r)));
+    const cols=[].concat(...shuffle([...rb]).map(g=>shuffle([...rb]).map(c=>g*b+c)));
+    const nums=shuffle([1,2,3,4,5,6,7,8,9]);
+    const pat=(r,c)=>(b*(r%b)+Math.floor(r/b)+c)%side;
+    return rows.map(r=>cols.map(c=>nums[pat(r,c)]));
+  }
+  // cells of box index 0..8
+  function boxCells(bi){
+    const br=Math.floor(bi/3)*3, bc=(bi%3)*3, out=[];
+    for(let r=br;r<br+3;r++) for(let c=bc;c<bc+3;c++) out.push({r,c});
+    return out;
+  }
+
+  // ---- math readout ----
+  function bigPow9(E){ return (9n ** BigInt(E)).toString(); }
+  function updateMath(){
+    const n=+nEl.value, x=+xEl.value, E=n*x;
+    $('nval').textContent=n; $('xval').textContent=x; $('E').textContent=E;
+    $('EC').textContent=(E/9).toFixed(2);
+    const p=Math.pow(9,-E);
+    $('P').textContent = p>=1e-4 ? '≈ '+p.toFixed(5) : '≈ '+p.toExponential(2);
+    const d=bigPow9(E);
+    $('denom').textContent = d.length>30 ? d.slice(0,4)+'…('+d.length+' digits)…'+d.slice(-4) : d.replace(/\B(?=(\d{3})+(?!\d))/g,',');
+    return E;
+  }
+
+  // ---- render ----
+  function renderEmpty(){
+    boardEl.innerHTML='';
+    for(let r=0;r<9;r++)for(let c=0;c<9;c++){
+      const d=document.createElement('div');
+      d.className='sq'+(r%3===0&&r>0?' r3':'')+(c%3===0&&c>0?' c3':'');
+      boardEl.appendChild(d);
+    }
+  }
+  function sqAt(r,c){ return boardEl.children[r*9+c]; }
+  function renderPuzzle(){
+    const blankSet=new Set(blanks.map(b=>b.r+'_'+b.c));
+    for(let r=0;r<9;r++)for(let c=0;c<9;c++){
+      const el=sqAt(r,c);
+      el.className='sq'+(r%3===0&&r>0?' r3':'')+(c%3===0&&c>0?' c3':'');
+      if(blankSet.has(r+'_'+c)){ el.classList.add('blank'); el.textContent=''; }
+      else { el.classList.add('given'); el.textContent=solution[r][c]; }
+    }
+  }
+
+  // ---- actions ----
+  function generate(){
+    const n=+nEl.value, x=+xEl.value;
+    solution=makeSolution();
+    const chosenBoxes=shuffle([0,1,2,3,4,5,6,7,8]).slice(0,n);
+    blanks=[];
+    chosenBoxes.forEach(bi=>{
+      const cells=shuffle(boxCells(bi)).slice(0,x);
+      cells.forEach(c=>blanks.push(c));
+    });
+    renderPuzzle();
+    verdictEl.className='verdict';
+    state=1;
+    promptEl.innerHTML='Press <span class="key">SPACE</span> to fill '+blanks.length+' blank'+(blanks.length>1?'s':'')+' at random';
+    resEl.textContent='';
+  }
+
+  function fill(){
+    let correct=0;
+    blanks.forEach(({r,c})=>{
+      const g=1+Math.floor(Math.random()*9);
+      const el=sqAt(r,c);
+      el.textContent=g;
+      el.classList.remove('blank');
+      if(g===solution[r][c]){ el.classList.add('guess-ok'); correct++; }
+      else el.classList.add('guess-bad');
+    });
+    const win = correct===blanks.length;
+    verdictEl.textContent = win ? 'YES' : 'NO';
+    verdictEl.className='verdict show '+(win?'yes':'no');
+    resEl.innerHTML = '<b>'+correct+'</b> / '+blanks.length+' cells landed correct'+(win?' — you beat 9^'+blanks.length+'.':'.');
+    promptEl.innerHTML='Press <span class="key">SPACE</span> for a new puzzle';
+    state=2;
+  }
+
+  function step(){
+    if(state===0||state===2) generate();
+    else if(state===1) fill();
+  }
+
+  function reset(){
+    state=0; blanks=[]; renderEmpty();
+    verdictEl.className='verdict';
+    resEl.textContent='';
+    promptEl.innerHTML='Press <span class="key">SPACE</span> to generate a puzzle';
+  }
+
+  // ---- events ----
+  document.addEventListener('keydown',e=>{
+    if(e.code==='Space'){ e.preventDefault(); step(); }
+  });
+  // tap on the board works too (mobile)
+  $('board').addEventListener('click',step);
+  [nEl,xEl].forEach(el=>el.addEventListener('input',()=>{ updateMath(); reset(); }));
+
+  updateMath();
+  renderEmpty();
+})();
+</script>
+</body>
+</html>
