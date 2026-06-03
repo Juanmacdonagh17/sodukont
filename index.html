@@ -95,6 +95,24 @@
   .verdict.yes{color:var(--yes);text-shadow:0 0 40px rgba(34,224,161,.5)}
   @keyframes slam{0%{transform:scale(2.6) rotate(-4deg);opacity:0}60%{opacity:1}100%{transform:scale(1) rotate(-3deg);opacity:1}}
 
+  .splatter{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
+  .splat{
+    position:absolute;font-family:"Anton",sans-serif;color:var(--no);
+    text-shadow:0 0 24px rgba(255,46,46,.45);white-space:nowrap;
+    transform:translate(-50%,-50%) rotate(var(--rot));
+    animation:pop .35s cubic-bezier(.2,1.4,.3,1) both;
+   }
+   @keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) rotate(var(--rot)) scale(2.4)}
+                100%{opacity:1;transform:translate(-50%,-50%) rotate(var(--rot)) scale(1)}}
+   .clearbtn{
+    margin:14px auto 0;display:block;background:transparent;color:var(--no);
+    border:1px solid var(--no);font-family:"Space Mono",monospace;font-weight:700;
+    letter-spacing:1px;padding:8px 18px;cursor:pointer;text-transform:uppercase;font-size:12px;
+    }
+   .clearbtn:hover{background:var(--no);color:var(--bg)}
+
+
+
   .prompt{
     text-align:center;font-size:13px;letter-spacing:1px;color:var(--dim);min-height:22px;
   }
@@ -110,6 +128,8 @@
 </style>
 </head>
 <body>
+<div class="splatter" id="splatter"></div>
+
 <div class="wrap">
   <header>
     <h1>BLIND<br>SUDOKU<span class="pow"> 9⁻ᴱ</span></h1>
@@ -143,6 +163,7 @@
 
   <div class="prompt" id="prompt">Press <span class="key">SPACE</span> to generate a puzzle</div>
   <div class="resultline" id="resultline"></div>
+  <button class="clearbtn" id="clear">CLEAR YOUR ERRORS</button>
 
   <footer>
     Each blank is an independent uniform draw from 1–9, scored against the unique solution.
@@ -155,6 +176,19 @@
   const $ = s => document.getElementById(s);
   const boardEl = $('board'), verdictEl = $('verdict'), promptEl = $('prompt'), resEl = $('resultline');
   const nEl = $('n'), xEl = $('x');
+
+
+    const NO_WORDS  = ['NO','NOPE','NEIN','NON','NIET','NANAY','NUH-UH','FALSE','✗','QUIT','FUCK','AGAIN?','GAMBLING ADDICTON','JESUS','MORE?','ARE YOU EVEN TRYING?'];
+    const YES_WORDS = ['YES','SÍ','YEP','CORRECTO','BINGO','OEEEEEEE','FINALLY','GO HOME','HOW ABOUT WORK?'];
+    const pick = a => a[Math.floor(Math.random()*a.length)];
+    const splatEl = $('splatter');
+
+
+
+
+
+
+
 
   let solution = [];      // 9x9 numbers
   let blanks = [];        // [{r,c}]
@@ -238,8 +272,14 @@
       else el.classList.add('guess-bad');
     });
     const win = correct===blanks.length;
-    verdictEl.textContent = win ? 'YES' : 'NO';
-    verdictEl.className='verdict show '+(win?'yes':'no');
+    if(win){
+      clearSplatter();                       // a YES wipes every NO
+      verdictEl.textContent = pick(YES_WORDS);
+      verdictEl.className='verdict show yes';
+    } else {
+      verdictEl.className='verdict';          // hide the centered slot
+      spawnNo();                              // drop a NO; they accumulate
+    }
     resEl.innerHTML = '<b>'+correct+'</b> / '+blanks.length+' cells landed correct'+(win?' — you beat 9^'+blanks.length+'.':'.');
     promptEl.innerHTML='Press <span class="key">SPACE</span> or tap for a new puzzle';
     state=2;
@@ -249,6 +289,21 @@
     if(state===0||state===2) generate();
     else if(state===1) fill();
   }
+
+
+    function spawnNo(){
+    const el = document.createElement('div');
+    el.className = 'splat';
+    el.textContent = pick(NO_WORDS);
+    el.style.left = (10 + Math.random()*80) + 'vw';   // random horizontal
+    el.style.top  = (12 + Math.random()*76) + 'vh';   // random vertical
+    el.style.fontSize = (40 + Math.random()*90) + 'px';
+    el.style.setProperty('--rot', (Math.random()*30 - 15) + 'deg');
+    splatEl.appendChild(el);
+    }
+    function clearSplatter(){ splatEl.innerHTML = ''; }
+
+
 
   function reset(){
     state=0; blanks=[]; renderEmpty();
@@ -264,6 +319,7 @@
   // tap on the board works too (mobile)
   $('board').addEventListener('click',step);
   [nEl,xEl].forEach(el=>el.addEventListener('input',()=>{ updateMath(); reset(); }));
+  $('clear').addEventListener('click', clearSplatter);
 
   updateMath();
   renderEmpty();
